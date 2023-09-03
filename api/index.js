@@ -218,7 +218,7 @@ const getRGMap = async (req, res, next) => {
     if(!req.files?.ocad_file) {
        return res.status(400).send('no file sent')
     }
-    if (!['jpeg', 'kmz'].includes(req.body.type)){
+    if (!['webp', 'kmz'].includes(req.body.type)){
        return res.status(400).send('invalid output format')
     }
     const uploadedFile = req.files.ocad_file;
