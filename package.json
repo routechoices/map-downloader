@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.44",
+    "express": "^4.17.1",
+    "express-fileupload": "^1.4.0",
+    "jszip": "^3.6.0",
+    "node-fetch": "^2.6.1",
+    "ocad-tiler": "^1.3.0",
+    "ocad2geojson": "^2.1.12",
+    "proj4": "^2.9.0",
+    "sharp": "^0.32.5"
+  },
+  "scripts": {}
+}

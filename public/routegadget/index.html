@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Routegadget Map Downloader</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
+    </head>
+    <body>
+        <div class="container" id="step1">
+            <h1>Routegadet Map Downloader</h1>
+            <form method="POST" id="eventUrlForm">
+                <label for="url" class="form-label">Enter the routegadget event url</label>
+                <input id="eventUrlInput" class="form-control" type="text" name="url" required/>
+                <button type="submit" class="btn btn-primary" style="margin-top:15px" name="type" value="jpeg">Submit</button>
+            </form>
+        </div>
+        <div class="container d-none" id="step2">
+            <h1>Routegadget Map Downloader</h1>
+            <form method="POST" action="/api/get-map">
+                <label for="url" class="form-label">Select the class</label>
+                <input id="eventUrlInput2" class="form-control" type="hidden" name="url" required/>
+                <select class="form-control" name="classId" required id="eventClassSelect"></select>
+                <button type="submit" class="btn btn-primary" style="margin-top:15px" name="type" value="jpeg">Submit</button>
+            </form>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
+        <script>
+            document.getElementById("eventUrlForm").addEventListener("submit", async function (e) {
+                e.preventDefault()
+                var url = document.getElementById("eventUrlInput").value;
+                console.log(`Parsing url: ${url}`);
+                var res = await fetch("/api/get-classes", {
+                    method: "POST",
+                    headers: {
+                        "accept": "application/json",
+                        "content-type": "application/json",
+                    },
+                    body: JSON.stringify({url})
+                });
+                if (res.status != 200) {
+                    alert("Something went wrong");
+                    return
+                }
+                var data = await res.json()
+                if (data.error) {
+                    alert(data.error);
+                }
+                var classes = data.classes
+                console.log("Classes found:", classes)
+                var selector = document.getElementById("eventClassSelect")
+                selector.innerHTML = ""
+                classes.forEach((c) => {
+                    var [index, name] = c;
+                    var opt = document.createElement("option")
+                    opt.value = index
+                    opt.appendChild(document.createTextNode(name))
+                    selector.appendChild(opt)
+                })
+                document.getElementById("step2").classList.remove('d-none')
+                document.getElementById("step1").classList.add('d-none')
+                document.getElementById("eventUrlInput2").value = document.getElementById("eventUrlInput").value;
+            })
+        </script>
+    </body>
+</html>
