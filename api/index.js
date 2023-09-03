@@ -225,9 +225,12 @@ const getRGMap = async (req, res, next) => {
 
     const ocadFile = await readOcad(uploadedFile.data);
     const mapCrs = ocadFile.getCrs();
+    if (mapCrs.code === 0) {
+        return res.status(400).send("Map not geolocalised")
+    }
     const proj4Def = await getProj4Def(mapCrs.code);
     const projectedBounds = ocadFile.getBounds(mapCrs.toProjectedCoord.bind(mapCrs))
-    
+
     proj4.defs('WGS84', "+title=WGS 84 (long/lat) +proj=longlat +ellps=WGS84 +datum=WGS84 +units=degrees");
     proj4.defs('OcadFile', proj4Def);
 
