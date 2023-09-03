@@ -17,7 +17,7 @@
         </div>
         <div class="container d-none" id="step2">
             <h1>Routegadget Map Downloader</h1>
-            <form method="POST" action="/api/get-map">
+            <form method="POST" action="/api/get-routegadget-map">
                 <label for="url" class="form-label">Select the class</label>
                 <input id="eventUrlInput2" class="form-control" type="hidden" name="url" required/>
                 <select class="form-control" name="classId" required id="eventClassSelect"></select>
@@ -30,7 +30,7 @@
                 e.preventDefault()
                 var url = document.getElementById("eventUrlInput").value;
                 console.log(`Parsing url: ${url}`);
-                var res = await fetch("/api/get-classes", {
+                var res = await fetch("/api/get-routegadget-classes", {
                     method: "POST",
                     headers: {
                         "accept": "application/json",
