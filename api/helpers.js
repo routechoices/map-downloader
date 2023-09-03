@@ -91,7 +91,7 @@ const getKml = (name, corners_coords) => {
           <name>${name}</name>
           <drawOrder>50</drawOrder>
           <Icon>
-            <href>files/doc.jpg</href>
+            <href>files/doc.webp</href>
           </Icon>
           <altitudeMode>clampToGround</altitudeMode>
           <gx:LatLonQuad>
