@@ -226,7 +226,7 @@ const getRGMap = async (req, res, next) => {
     const ocadFile = await readOcad(uploadedFile.data);
     const mapCrs = ocadFile.getCrs();
     const mapGeoRef = mapCrs.code !== 0;
-    if (!mapGeoRef && req.body.type === "kmz") {
+    if (!mapGeoRef) {
         return res.status(400).send("Map not geo-referenced")
     }
 
