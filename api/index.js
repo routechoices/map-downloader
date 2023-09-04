@@ -225,20 +225,24 @@ const getRGMap = async (req, res, next) => {
 
     const ocadFile = await readOcad(uploadedFile.data);
     const mapCrs = ocadFile.getCrs();
-    if (mapCrs.code === 0) {
-        return res.status(400).send("Map not geolocalised")
+    const mapGeoRef = mapCrs.code !== 0;
+    if (!mapGeoRef && req.body.type === "kmz") {
+        return res.status(400).send("Map not geo-referenced")
     }
-    const proj4Def = await getProj4Def(mapCrs.code);
-    const projectedBounds = ocadFile.getBounds(mapCrs.toProjectedCoord.bind(mapCrs))
 
-    proj4.defs('WGS84', "+title=WGS 84 (long/lat) +proj=longlat +ellps=WGS84 +datum=WGS84 +units=degrees");
-    proj4.defs('OcadFile', proj4Def);
+    let northEast, northWest, southWest, southEast;
+    if (mapGeoRef) {
+        const proj4Def = await getProj4Def(mapCrs.code);
+        const projectedBounds = ocadFile.getBounds(mapCrs.toProjectedCoord.bind(mapCrs))
 
-    const northEast = proj4('OcadFile', 'WGS84', [projectedBounds[2], projectedBounds[3]])
-    const northWest = proj4('OcadFile', 'WGS84', [projectedBounds[0], projectedBounds[3]])
-    const southWest = proj4('OcadFile', 'WGS84', [projectedBounds[0], projectedBounds[1]])
-    const southEast = proj4('OcadFile', 'WGS84', [projectedBounds[2], projectedBounds[1]])
+        proj4.defs('WGS84', "+title=WGS 84 (long/lat) +proj=longlat +ellps=WGS84 +datum=WGS84 +units=degrees");
+        proj4.defs('OcadFile', proj4Def);
 
+        northEast = proj4('OcadFile', 'WGS84', [projectedBounds[2], projectedBounds[3]])
+        northWest = proj4('OcadFile', 'WGS84', [projectedBounds[0], projectedBounds[3]])
+        southWest = proj4('OcadFile', 'WGS84', [projectedBounds[0], projectedBounds[1]])
+        southEast = proj4('OcadFile', 'WGS84', [projectedBounds[2], projectedBounds[1]])
+    }
     const tiler = new OcadTiler(ocadFile)
     tileBounds = tiler.bounds
     const imgBlob = await render(tiler, tileBounds, 1, {
@@ -254,7 +258,11 @@ const getRGMap = async (req, res, next) => {
     if (!req.body.type || req.body.type === 'webp') {
         out = imgBlob
         mime = 'image/webp'
-        filename = uploadedFile.name.slice(0, -4) + "_" + northWest[1] + "_" + northWest[0] + "_" + northEast[1] + "_" + northEast[0] + "_" + southEast[1] + "_" + southEast[0] + "_" + southWest[1] + "_" + southWest[0] + "_" +".webp"
+        if (mapGeoRef) {
+            filename = uploadedFile.name.slice(0, -4) + "_" + northWest[1] + "_" + northWest[0] + "_" + northEast[1] + "_" + northEast[0] + "_" + southEast[1] + "_" + southEast[0] + "_" + southWest[1] + "_" + southWest[0] + "_" +".webp"
+        } else {
+            filename = uploadedFile.name.slice(0, -4) + ".webp"
+        }
     } else if(req.body.type === 'kmz') {
         const mapName = uploadedFile.name.slice(0, -4)
         out = await saveKMZ(
