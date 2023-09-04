@@ -1,9 +1,10 @@
-# map download helpers
+# Map download helpers
 
 So far it contains:
-    - Livelox georeferenced map with route image downloader 
-    - Routegadget pages map with route image downloader
-    - Ocad files to image converter
+
+- Livelox georeferenced map with route image downloader 
+- Routegadget pages map with route image downloader
+- Ocad files to image converter
 
 # Install
 
