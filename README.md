@@ -1,6 +1,9 @@
-# livelox-map-download
+# map download helpers
 
-Let you download map with route from a livelox event
+So far it contains:
+    - Livelox georeferenced map with route image downloader 
+    - Routegadget pages map with route image downloader
+    - Ocad files to image converter
 
 # Install
 
@@ -8,6 +11,6 @@ Let you download map with route from a livelox event
 
 # Run
 
-`./download-map.js <livelox-url>`
+`node index.js`
 
-Example: `./download-map.js https://www.livelox.com/Viewer/SM-Keskimatka-2021-Karsinta/H35K1\?classId\=382140`
+Then visit : `http://localhost:3526`
