@@ -29,7 +29,6 @@
             document.getElementById("eventUrlForm").addEventListener("submit", async function (e) {
                 e.preventDefault()
                 var url = document.getElementById("eventUrlInput").value;
-                console.log(`Parsing url: ${url}`);
                 var res = await fetch("/api/get-routegadget-classes", {
                     method: "POST",
                     headers: {
@@ -47,7 +46,6 @@
                     alert(data.error);
                 }
                 var classes = data.classes
-                console.log("Classes found:", classes)
                 var selector = document.getElementById("eventClassSelect")
                 selector.innerHTML = ""
                 classes.forEach((c) => {

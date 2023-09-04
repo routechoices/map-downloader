@@ -122,13 +122,11 @@ const getRGClasses = async (req, res, next) => {
     const gadgetRootPath = parsedUrl.pathname.split('/').slice(0, -2).join('/') + "/kartat"
     const eventId = parseInt(parsedUrl.query.id, 10);
     const dataFile = parsedUrl.protocol + '//' + parsedUrl.host + '/' + gadgetRootPath + "/sarjat_" + eventId + ".txt";
-    console.log(dataFile)
     const classesFileRequest = await fetch(dataFile)
     if (classesFileRequest.status != 200) {
       return res.status(200).send({error: "Cannot access classes file"})
     }
     const classesFile = await classesFileRequest.text();
-    console.log(classesFile)
     const lines = classesFile.split('\n').map((l) => l.trim()).filter(Boolean)
     const classes = lines.map((line) => {
       const data = line.split('|');
@@ -139,7 +137,6 @@ const getRGClasses = async (req, res, next) => {
 
 const getRGMap = async (req, res, next) => {
     const eventUrl = req.body.url;
-    console.log(eventUrl)
     if (!eventUrl  || !req.body.classId) {
       return res.status(200).send({error: "Missing parameters"})
     }
@@ -148,7 +145,6 @@ const getRGMap = async (req, res, next) => {
     const eventId = parseInt(parsedUrl.query.id, 10);
   
     const cFileUrl = parsedUrl.protocol + '//' + parsedUrl.host + '/' + gadgetRootPath + "/kilpailijat_" + eventId + ".txt";
-    console.log(cFileUrl)
     const competitorFileRequest = await fetch(cFileUrl)
     if (competitorFileRequest.status != 200) {
       return res.status(200).send({error: "Cannot access competitor file"})
@@ -165,13 +161,11 @@ const getRGMap = async (req, res, next) => {
       return res.status(200).send({error: "Cannot find routes in competitors file"})
     }
     const dataFile = parsedUrl.protocol + '//' + parsedUrl.host + '/' + gadgetRootPath + "/ratapisteet_" + eventId + ".txt";
-    console.log(dataFile)
     const routesFileRequest = await fetch(dataFile)
     if (routesFileRequest.status != 200) {
       return res.status(200).send({error: "Cannot access routes file"})
     }
     const routesFile = await routesFileRequest.text();
-    console.log(routesFile)
     const lines = routesFile.split('\n').map((l) => l.trim()).filter(Boolean)
     const routesData = lines.map((line) => {
       const data = line.split('|');
@@ -183,7 +177,6 @@ const getRGMap = async (req, res, next) => {
       return res.status(200).send({error: "Cannot find routes in routes file"})
     }
     const coordinates = routesData.map(routeData => routeData.split('N').map((xy) => xy && xy.split(';').map((x) => parseInt(x, 10))).filter(Boolean))
-    console.log(coordinates)
     
     const mapListFileURL = parsedUrl.protocol + '//' + parsedUrl.host + '/' + gadgetRootPath + "/kisat.txt";
     const mapFileRequest = await fetch(mapListFileURL)
@@ -192,14 +185,12 @@ const getRGMap = async (req, res, next) => {
       return res.status(200).send({error: "Cannot access routes file"})
     }
     const mapListFile = await mapFileRequest.text();
-    console.log(mapListFile)
     const klines = mapListFile.split('\n').map((l) => l.trim()).filter(Boolean)
     const mapId = klines.map((line) => {
       return line.split('|');
     }).find((d) => {
       return d?.[0] == eventId
     })?.[1]
-    console.log(mapId)
     
     const mapURL = parsedUrl.protocol + '//' + parsedUrl.host + '/' + gadgetRootPath + "/" + parseInt(mapId, 10) + ".jpg";
     const mapImg = await loadImage(mapURL)
