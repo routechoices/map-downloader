@@ -20,11 +20,13 @@ const getLiveloxMap = async (req, res, next) => {
         return res.status(400).send('invalid url domain')
     }
     let classId = ''
+    let relayLeg = ''
     try {
         classId = url.parse(liveloxUrl, true).query.classId
     } catch (e) {
         return res.status(400).send('no class id provided' )
     }
+    relayLeg = url.parse(liveloxUrl, true).query?.relayLeg
     let data = {}
     try {
         const res = await fetch("https://www.livelox.com/Data/ClassInfo", {
@@ -36,7 +38,7 @@ const getLiveloxMap = async (req, res, next) => {
             "body": JSON.stringify({
                 "classIds":[classId],
                 "courseIds":null,
-                "relayLegs":[],
+                "relayLegs":!!relayLeg ? [relayLeg] : [],
                 "relayLegGroupIds":[],
                 "includeMap":true,
                 "includeCourses":true,
@@ -77,6 +79,16 @@ const getLiveloxMap = async (req, res, next) => {
         mapName = mapData.name
     } catch (e) {
         return res.status(400).send('could not parse livelox data')
+    }
+    if (relayLeg) {
+        const courseIds = []
+        const groups = eventData.class.relayLegGroups
+        groups.forEach((group) => {
+            if (group.relayLegs.includes(parseInt(relayLeg))) {
+                courseIds.push(...group.courses.map((c) => c.id))
+            }
+        })
+        route = blobData.courses.filter((course) => courseIds.includes(course.id)).map((c) => c.controls)
     }
     try {
         const mapImg = await loadImage(mapUrl)
