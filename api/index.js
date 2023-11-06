@@ -11,8 +11,70 @@ const { readOcad } = require('ocad2geojson')
 const OcadTiler = require('ocad-tiler')
 const proj4 = require('proj4')
 const { render } = require('./ocad_render')
+const { CornersLatLonsFromThreePointsCoordsCal } = require('./utils');
 
 const app = express()
+
+const getGpsSeurantaMap = async (req, res, next) => {
+    let eventUrl = req.body.url
+    if (!eventUrl.endsWith('/')) {
+        eventUrl += '/'
+    }
+    /*
+    if (!eventUrl.startsWith('https://tulospalvelu.fi/')) { 
+        return res.status(400).send('invalid url domain')
+    }
+    */
+    let data = ""
+    try {
+        const res = await fetch(eventUrl + "init", {
+            "method": "GET"
+        });
+        data = await res.text()
+    } catch (e) {
+        return res.status(400).send('could not reach tulospalvelu server')
+    }
+    const calString = [...data.matchAll(/^CALIBRATION:(.+)$/gm)][0][1];
+    const mapName = [...data.matchAll(/^RACENAME:(.+)$/gm)][0][1];
+    if (!calString) {
+        return res.status(400).send('Could not determine calibration' + calString)
+    }
+    const mapUrl = eventUrl + 'map'
+    const mapR = await fetch(mapUrl)
+    const mapBuffer = await mapR.buffer();
+    const mapImg = sharp(mapBuffer).webp()
+    const outImgBlob = await mapImg.webp().toBuffer()
+    const imgSize = await mapImg.metadata()
+    const bounds = CornersLatLonsFromThreePointsCoordsCal(imgSize.width, imgSize.height, calString);
+    let buffer
+    let mime
+    let filename
+    if (!req.body.type || req.body.type === 'webp') {
+        buffer = outImgBlob
+        mime = 'image/webp'
+        filename = `${mapName}_${bounds[0].lat}_${bounds[0].lon}_${bounds[1].lat}_${bounds[1].lon}_${bounds[2].lat}_${bounds[2].lon}_${bounds[3].lat}_${bounds[3].lon}_.webp`
+    } else if(req.body.type === 'kmz') {
+        buffer = await saveKMZ(
+            mapName,
+            {
+                top_left: bounds[0],
+                top_right: bounds[1],
+                bottom_right: bounds[2],
+                bottom_left: bounds[3]
+            },
+            outImgBlob
+        )
+        mime = 'application/vnd.google-earth.kmz'
+        filename = `${mapName}.kmz`
+    } else {
+        return res.status(400).send('invalid type' )
+    }
+    var readStream = new stream.PassThrough()
+    readStream.end(buffer)
+    res.set('Content-Disposition', "attachment; filename*=UTF-8''" + escape(filename))
+    res.set('Content-Type', mime)
+    readStream.pipe(res)
+}
 
 const getLiveloxMap = async (req, res, next) => {
     const liveloxUrl = req.body.url
@@ -120,7 +182,7 @@ const getLiveloxMap = async (req, res, next) => {
         }
         var readStream = new stream.PassThrough()
         readStream.end(buffer)
-        res.set('Content-disposition', 'attachment; filename="' + filename.replace(/\\/g, '_').replace(/"/g, '\\"') + '"')
+        res.set('Content-Disposition', "attachment; filename*=UTF-8''" + escape(filename))
         res.set('Content-Type', mime)
         readStream.pipe(res)
     } catch (e) {
@@ -212,7 +274,7 @@ const getRGMap = async (req, res, next) => {
     const filename = `map.jpg`
     var readStream = new stream.PassThrough()
     readStream.end(buffer)
-    res.set('Content-disposition', 'attachment; filename="' + filename.replace(/\\/g, '_').replace(/"/g, '\\"') + '"')
+    res.set('Content-disposition', "attachment; filename*=UTF-8''" + escape(filename))
     res.set('Content-Type', mime)
     readStream.pipe(res)
   }
@@ -300,6 +362,7 @@ app.use(fileUpload({
 app.use(express.static('public'))
 
 app.post('/api/get-livelox-map', getLiveloxMap)
+app.post('/api/get-gpsseuranta-map', getGpsSeurantaMap)
 app.post('/api/get-routegadget-classes', getRGClasses)
 app.post('/api/get-routegadget-map', getRGMap)
 app.post('/api/get-ocad-map', getOcadMap)

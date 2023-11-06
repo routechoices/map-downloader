@@ -37,13 +37,13 @@ const SpheroidProjection = (function(){
     pi_180 = pi/_180;
   function S(){
   }
-  S[p].LatLonToMeters = function(latlon){
+  S[p].latLonToMeters = function(latlon){
     return new Point(
       latlon.lon*rad*pi_180,
        m.log(m.tan((90+latlon.lat)*pi_180/2))*rad
     );
   };
-  S[p].MetersToLatLon = function(mxy){
+  S[p].metersToLatLon = function(mxy){
     return new LatLon(
       (2*m.atan(m.exp(mxy.y/rad))-pi/2)/pi_180,
        mxy.x/rad/pi_180
@@ -119,17 +119,88 @@ function general2DProjection(
     var d = basisToPoints(x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d);
     return multmm(d, adj(s));
 }
+
+function general2DProjectionFrom3points(
+  x1s, y1s, x1d, y1d,
+  x2s, y2s, x2d, y2d,
+  x3s, y3s, x3d, y3d
+) {
+  var s = basisToPoints(x1s, y1s, x2s, y2s, x3s, y3s, x4s, y4s);
+  var d = basisToPoints(x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d);
+  return multmm(d, adj(s));
+}
+
 function project(m, x, y) {
     var v = multmv(m, [x, y, 1]);
     return [v[0] / v[2], v[1] / v[2]];
 }
 
+function solveAffineMatrix(r1, s1, t1, r2, s2, t2, r3, s3, t3) {
+  const a = (((t2 - t3) * (s1 - s2)) - ((t1 - t2) * (s2 - s3))) / (((r2 - r3) * (s1 - s2)) - ((r1 - r2) * (s2 - s3)))
+  const b = (((t2 - t3) * (r1 - r2)) - ((t1 - t2) * (r2 - r3))) / (((s2 - s3) * (r1 - r2)) - ((s1 - s2) * (r2 - r3)))
+  const c = t1 - (r1 * a) - (s1 * b);
+  return [a, b, c];
+}
+
+function deriveAffineTransform(a, b, c) {
+  const e = 1e-15;
+  a.xy.x -= e;
+  a.xy.y += e;
+  b.xy.x += e;
+  b.xy.y -= e;
+  c.xy.x += e;
+  c.xy.y += e;
+  x = solveAffineMatrix(
+    a.xy.x, a.xy.y, a.latLonMeters.x,
+    b.xy.x, b.xy.y, b.latLonMeters.x,
+    c.xy.x, c.xy.y, c.latLonMeters.x,
+  )
+  y = solveAffineMatrix(
+    a.xy.x, a.xy.y, a.latLonMeters.y,
+    b.xy.x, b.xy.y, b.latLonMeters.y,
+    c.xy.x, c.xy.y, c.latLonMeters.y,
+  )
+  return x.concat(y);
+}
+
+function CornersLatLonsFromThreePointsCoordsCal(width, height, gpsSeurantaCalString) {
+  const calPtsRaw = gpsSeurantaCalString.split("|").map((x) => parseFloat(x));
+  const proj = new SpheroidProjection();
+  const calPts = [
+    {
+      latLonMeters: proj.latLonToMeters(new LatLon(calPtsRaw[1], calPtsRaw[0])),
+      xy: new Point(calPtsRaw[2], calPtsRaw[3]),
+    },
+    {
+      latLonMeters: proj.latLonToMeters(new LatLon(calPtsRaw[5], calPtsRaw[4])),
+      xy: new Point(calPtsRaw[6], calPtsRaw[7]),
+    },
+    {
+      latLonMeters: proj.latLonToMeters(new LatLon(calPtsRaw[9], calPtsRaw[8])),
+      xy: new Point(calPtsRaw[10], calPtsRaw[11]),
+    }
+  ];
+  const xyToLatLonMetersCoeffs = deriveAffineTransform(...calPts);
+  function mapXYtoLatLon (xy) {
+    const x = xy.x * xyToLatLonMetersCoeffs[0] + xy.y * xyToLatLonMetersCoeffs[1] + xyToLatLonMetersCoeffs[2];
+    const y = xy.x * xyToLatLonMetersCoeffs[3] + xy.y * xyToLatLonMetersCoeffs[4] + xyToLatLonMetersCoeffs[5];
+    return proj.metersToLatLon(new Point(x, y));
+  }
+  return [
+    mapXYtoLatLon(new Point(0, 0)),
+    mapXYtoLatLon(new Point(width, 0)),
+    mapXYtoLatLon(new Point(width, height)),
+    mapXYtoLatLon(new Point(0, height)),
+  ];
+}
+
+
 function cornerCalTransform(width, height, top_left_latlon, top_right_latlon, bottom_right_latlon, bottom_left_latlon) {
     var proj = new SpheroidProjection();
-    var top_left_meters = proj.LatLonToMeters(top_left_latlon);
-    var top_right_meters = proj.LatLonToMeters(top_right_latlon);
-    var bottom_right_meters = proj.LatLonToMeters(bottom_right_latlon);
-    var bottom_left_meters = proj.LatLonToMeters(bottom_left_latlon);
+    var top_left_meters = proj.latLonToMeters(top_left_latlon);
+    var top_right_meters = proj.latLonToMeters(top_right_latlon);
+    var bottom_right_meters = proj.latLonToMeters(bottom_right_latlon);
+    var bottom_left_meters = proj.latLonToMeters(bottom_left_latlon);
     var matrix3d = general2DProjection(
         top_left_meters.x, top_left_meters.y, 0, 0,
         top_right_meters.x, top_right_meters.y, width, 0,
@@ -137,7 +208,7 @@ function cornerCalTransform(width, height, top_left_latlon, top_right_latlon, bo
         bottom_left_meters.x, bottom_left_meters.y, 0, height
     )
     return function(latLon){
-        var meters = proj.LatLonToMeters(latLon);
+        var meters = proj.latLonToMeters(latLon);
         var xy = project(matrix3d, meters.x, meters.y);
         return new Point(xy[0], xy[1]);
     };
@@ -145,10 +216,10 @@ function cornerCalTransform(width, height, top_left_latlon, top_right_latlon, bo
 
 function cornerBackTransform(width, height, top_left_latlon, top_right_latlon, bottom_right_latlon, bottom_left_latlon) {
     var proj = new SpheroidProjection();
-    var top_left_meters = proj.LatLonToMeters(top_left_latlon);
-    var top_right_meters = proj.LatLonToMeters(top_right_latlon);
-    var bottom_right_meters = proj.LatLonToMeters(bottom_right_latlon);
-    var bottom_left_meters = proj.LatLonToMeters(bottom_left_latlon);
+    var top_left_meters = proj.latLonToMeters(top_left_latlon);
+    var top_right_meters = proj.latLonToMeters(top_right_latlon);
+    var bottom_right_meters = proj.latLonToMeters(bottom_right_latlon);
+    var bottom_left_meters = proj.latLonToMeters(bottom_left_latlon);
     var matrix3d = general2DProjection(
         0, 0, top_left_meters.x, top_left_meters.y,
         width, 0, top_right_meters.x, top_right_meters.y,
@@ -157,7 +228,7 @@ function cornerBackTransform(width, height, top_left_latlon, top_right_latlon, b
     )
     return function(coords){
         var xy = project(matrix3d, coords.x, coords.y);
-        return proj.MetersToLatLon(new Point(xy[0], xy[1]));
+        return proj.metersToLatLon(new Point(xy[0], xy[1]));
     };
 }
 
@@ -187,5 +258,6 @@ module.exports = {
     SpheroidProjection,
     cornerCalTransform,
     cornerBackTransform,
-    dataURItoBlob
+    dataURItoBlob,
+    CornersLatLonsFromThreePointsCoordsCal
 }
